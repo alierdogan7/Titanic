@@ -62,12 +62,15 @@ def get_response(neighbors): #takes the list of tuples, (distance, data), return
     for distance, data in neighbors:
         # if distance == 0: # fix for distance=0 issue. if it is, predict with the same class
         #     return data['Survived']
-
+        #
         # vote_weight = 1 / (distance**2) # for precise predictions, do a weighted voting for predicting the class
+
         if data['Survived']:
-            survived += 1 #vote_weight
+            # survived += vote_weight
+            survived += 1
         else:
-            died += 1 #vote_weight
+            # died += vote_weight
+            died += 1
 
     return 1 if survived >= died else 0
 
@@ -89,32 +92,101 @@ normalized_data = read_csv('titanicdata.csv')
 
 # scatter_plot(normalized_data['training'])
 
+def print_cv_accuracy():
+    #cross validation
+    accuracies = []
+    for k in [1] + list(range(2, 17, 2)):
+    # for k in range(2, 13):
+        validation_set_size = len(normalized_data['validation'])
+        accurate_count = 0
+    
+        for data in normalized_data['validation']:
+            neighbors = get_k_neighbors(data, normalized_data['training'], k)
+            if data['Survived'] == get_response(neighbors):
+                accurate_count += 1
+    
+        accuracies.append((k, (float(accurate_count) / validation_set_size)))
 
-#cross validation
-# accuracies = []
+    pprint.pprint(accuracies)
+    for k, acc in accuracies:
+        print("Accuracy of kNN with parameter k=%d is %f" % (k, acc*100))
+
+
+def print_testing_accuracy(k=1):
+    #testing
+    testing_set_size = len(normalized_data['test'])
+    accurate_count = 0
+    
+    for data in normalized_data['test']:
+        neighbors = get_k_neighbors(data, normalized_data['training'] + normalized_data['validation'], k)
+        if data['Survived'] == get_response(neighbors):
+            accurate_count += 1
+    
+    print('Accuracy of k=%d:  %f' % (k, 100*(float(accurate_count) / testing_set_size)))
+
+def read_csv_to_matrix(filename):
+    splitted_data = {'training': {'x': [], 'y': []},
+                     'validation': {'x': [], 'y': []},
+                     'test': {'x': [], 'y': []}}
+
+    dataset = np.loadtxt(open("titanicdata.csv", "rb"), delimiter=",", skiprows=1)
+    x = dataset[:, [1, 2, 3]] # separating features and classes
+    y = dataset[:, [0]]
+
+    age_set = [data[2] for data in x]  # index 2 corresponds to age column
+    min_age, max_age = min(age_set), max(age_set)
+
+    for index in range(len(x)):
+        x[index][2] = (x[index][2] - min_age) / (max_age - min_age)
+
+
+    splitted_data['training']['x'] = x[:400]
+    splitted_data['training']['y'] = y[:400]
+    splitted_data['validation']['x'] = x[400:700]
+    splitted_data['validation']['y'] = y[400:700]
+    splitted_data['test']['x'] = x[700:]
+    splitted_data['test']['y'] = y[700:]
+
+    return splitted_data
+
+#
+# def sklearn_accuracy():
+#     # X = [[0], [1], [2], [3]]
+#     dataset = read_csv_to_matrix('')
+#     training = dataset['training']
+#     validation = dataset['validation']
+#     test = dataset['test']
+#
+#     trainingX = training['x']
+#     y = training['y']
+#     trainingY = np.array(y.T)[0]
+#
+#     from sklearn.neighbors import KNeighborsClassifier
+#
+#
+#     #cross-validation data
+#     accuracies = []
+#     for k in [1] + list(range(2, 17, 2)):
+#     # for k in range(2, 13):
+#         neigh = KNeighborsClassifier(n_neighbors=k)
+#         neigh.fit(trainingX, trainingY)
+#         neigh.predict_proba(validation['x'])
+#         score = neigh.score(validation['x'], validation['y'])
+#         print("Score of scikitlearn on this with K=%d ==> %f" % (k, score))
+#
+#     pprint.pprint(accuracies)
+#
+    # # testing data
+    # k = 4
+    # neigh = KNeighborsClassifier(n_neighbors=k)
+    # neigh.fit(trainingX, trainingY)
+    # neigh.predict_proba(test['x'])
+    # score = neigh.score(test['x'], test['y'])
+    # print("Score of scikitlearn on this with K=%d ==> %f" % (k, score))
+
+# sklearn_accuracy()
+
+# print_cv_accuracy()
+#
 # for k in [1] + list(range(2, 17, 2)):
-# # for k in range(2, 13):
-#     validation_set_size = len(normalized_data['validation'])
-#     accurate_count = 0
-#
-#     for data in normalized_data['validation']:
-#         neighbors = get_k_neighbors(data, normalized_data['training'], k)
-#         if data['Survived'] == get_response(neighbors):
-#             accurate_count += 1
-#
-#     accuracies.append((k, (float(accurate_count) / validation_set_size)))
-#
-# pprint.pprint(accuracies)
-#
-
-
-#testing
-# testing_set_size = len(normalized_data['test'])
-# accurate_count = 0
-#
-# for data in normalized_data['test']:
-#     neighbors = get_k_neighbors(data, normalized_data['training'] + normalized_data['validation'], 7)
-#     if data['Survived'] == get_response(neighbors):
-#         accurate_count += 1
-#
-# print('Accuracy of k=4:%f' % (float(accurate_count) / testing_set_size))
+#     print_testing_accuracy(k)

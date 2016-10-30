@@ -8,12 +8,20 @@ import numpy as np
 
 def predict_and_get_accuracy():
     dataset = read_csv("s")
-    x = dataset['training']['x']
-    y = dataset['training']['y']
-    m = len(x)
-    alpha = 0.01
+    x = np.concatenate((dataset['training']['x'] ,dataset['validation']['x']))
+    y = np.concatenate((dataset['training']['y'] , dataset['validation']['y']))
+    # x = dataset['training']['x']
+    # y = dataset['training']['y']
+
+    alpha = 0.1 # optimized 0.1
+    epsilon = 0.00001    # optimized: 0.00001
     max_iters = 3000
-    theta0, theta_set = gradient_descent(x, y, alpha, max_iters)
+    theta0, theta_set = gradient_descent(x, y, alpha, max_iters, epsilon)
+
+    #now we've learned our parameters. let's get accuracy with cross-validation set
+    x = dataset['test']['x']
+    y = dataset['test']['y']
+    m = len(x)
 
     correct_count = 0
     for i in range(m):
@@ -28,11 +36,15 @@ def predict_and_get_accuracy():
                 correct_count += 1
 
     accuracy = correct_count / float(m) * 100
-    print("Accuracy with theta0:%f, theta_set:%s, alpha:%f, max_iters:%d: %f percent." %
-                            (theta0, str(theta_set), alpha, max_iters, accuracy))
+
+    with open('log.txt', "a") as logfile:
+        logfile.write("Accuracy with theta0:%f, theta_set:%s, alpha:%f, epsilon:%f, max_iters:%d: %f percent.\n\n" %
+                            (theta0, str(theta_set), alpha, epsilon, max_iters, accuracy))
+        print("Accuracy with theta0:%f, theta_set:%s, alpha:%f, epsilon:%f, max_iters:%d: %f percent.\n\n" %
+                            (theta0, str(theta_set), alpha, epsilon, max_iters, accuracy))
 
 
-def gradient_descent(x, y, alpha=0.01, max_iterations=1000, ep=0.0001 ):
+def gradient_descent(x, y, alpha=0.001, max_iterations=1000, ep=0.00001):
     converged = False
     m = x.shape[0]  # number of rows
     iterations = 0
@@ -40,6 +52,10 @@ def gradient_descent(x, y, alpha=0.01, max_iterations=1000, ep=0.0001 ):
     # initial values of thetas
     theta0 = np.random.rand()
     theta_set = np.random.random(x.shape[1])
+    print("Initial theta0:%f, theta_set:%s" % (theta0, str(theta_set)))
+    # 1.089358, theta_set:[-0.10824952 -1.04552378  0.69685797]
+    # theta0 = 1.089358
+    # theta_set = [-0.10824952, -1.04552378, 0.69685797]
 
     # error with initial thetas
     J = cost_function(x, y, theta0, theta_set)
@@ -58,6 +74,7 @@ def gradient_descent(x, y, alpha=0.01, max_iterations=1000, ep=0.0001 ):
 
         #compute the error again
         e = cost_function(x, y, theta0, theta_set)
+        print("Current cost is: %f" % e)
 
         if abs(J-e) <= ep:
             converged = True
@@ -104,7 +121,7 @@ def read_csv(filename):
                      'test': {'x': [], 'y': []}}
 
     dataset = np.loadtxt(open("titanicdata.csv", "rb"), delimiter=",", skiprows=1)
-    x = dataset[:, [1, 2, 3]] # separate features and classes
+    x = dataset[:, [1, 2, 3]] # separating features and classes
     y = dataset[:, [0]]
 
     normalize_features(x)
